@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin: 0; background: linear-gradient(135deg, #f4f6f9 0%, #e8eef5 100%);
+    min-height: 100vh; padding: 20px; color: #222;
+  }
+  .card {
+    max-width: 900px; margin: 0 auto; background: #fff; padding: 32px;
+    border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.08); margin-bottom: 16px;
+  }
+  .login-card { max-width: 460px; margin: 40px auto; }
+  h1 { color: #1a73e8; margin: 0 0 6px; font-size: 26px; }
+  .sub { color: #555; font-size: 14px; margin-bottom: 22px; }
+  input {
+    display: block; width: 100%; padding: 12px 14px; margin: 6px 0;
+    border: 1px solid #d0d5dd; border-radius: 8px; font-size: 15px;
+    transition: border-color .15s;
+  }
+  input:focus { outline: none; border-color: #1a73e8; }
+  .btn {
+    background: #1a73e8; color: #fff; border: 0; padding: 12px 24px;
+    border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600;
+    transition: background .15s;
+  }
+  .btn:hover { background: #1557b0; }
+  .btn:disabled { background: #999; cursor: wait; }
+  .btn-ghost {
+    background: transparent; color: #555; border: 1px solid #d0d5dd; font-weight: 500;
+  }
+  .btn-ghost:hover { background: #f0f4f8; color: #222; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eef1f6; font-size: 14px; }
+  th {
+    background: #f0f4f8; color: #444; font-weight: 600; font-size: 13px;
+    text-transform: uppercase; letter-spacing: .3px;
+  }
+  tr:hover td { background: #fafcff; }
+  .num { text-align: right; }
+  .pill {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 600;
+  }
+  .pill.ativo { background: #e6f4ea; color: #137333; }
+  .pill.pago  { background: #e6f0ff; color: #1a73e8; }
+  .alerta {
+    padding: 12px 16px; border-radius: 6px; margin-top: 12px; font-size: 14px;
+  }
+  .alerta.erro-bg { background: #fde8e8; border: 1px solid #f5c2c7; color: #a3232b; }
+  .info { color: #555; font-size: 14px; }
+  .user-tag {
+    display: inline-block; background: #e6f0ff; color: #1a73e8;
+    padding: 4px 12px; border-radius: 14px; font-size: 14px; font-weight: 600;
+    margin-top: 4px;
+  }
+  .dash-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 18px; flex-wrap: wrap; gap: 12px;
+  }
+  .empty { text-align: center; color: #888; padding: 32px 20px; }
+  .footer-note { margin-top: 20px; font-size: 12px; color: #999; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="card login-card" id="login">
+  <h1>Area do Investidor</h1>
+  <p class="sub">Entre com seu usuario e senha para ver suas aplicacoes.</p>
+  <input id="usuario" placeholder="Usuario" autocomplete="off">
+  <input id="senha" type="password" placeholder="Senha" autocomplete="off">
+  <button id="btnEntrar" class="btn">Entrar</button>
+  <div id="alertaBox"></div>
+</div>
+
+<div class="card" id="dados" style="display:none">
+  <div class="dash-head">
+    <div>
+      <h1>Minhas Aplicacoes</h1>
+      <span class="user-tag" id="userTag"></span>
+    </div>
+    <button id="btnSair" class="btn btn-ghost">Sair</button>
+  </div>
+  <div id="tabela"></div>
+  <div class="footer-note">
+    Atualize a pagina (F5) para ver os dados mais recentes.
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('btnEntrar').addEventListener('click', fazerLogin);
+  document.getElementById('btnSair').addEventListener('click', sair);
+  document.getElementById('senha').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') fazerLogin();
+  });
+  document.getElementById('usuario').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('senha').focus();
+  });
+  if (localStorage.getItem('token')) {
+    carregarDados();
+  }
+});
+
+function mostrarAlerta(texto, tipo) {
+  var box = document.getElementById('alertaBox');
+  box.innerHTML = '<div class="alerta ' + (tipo === 'erro' ? 'erro-bg' : '') + '">' + texto + '</div>';
+}
+function limparAlerta() {
+  document.getElementById('alertaBox').innerHTML = '';
+}
+
+function fazerLogin() {
+  var u = document.getElementById('usuario').value.trim();
+  var s = document.getElementById('senha').value;
+  var btn = document.getElementById('btnEntrar');
+  limparAlerta();
+
+  if (!u || !s) {
+    mostrarAlerta('Preencha usuario e senha.', 'erro');
+    return;
+  }
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    mostrarAlerta('Erro de contexto. Recarregue a pagina (F5) e tente novamente.', 'erro');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Entrando...';
+  google.script.run
+    .withSuccessHandler(function(res) {
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+      onLoginOk(res);
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+      onErr(err);
+    })
+    .login(u, s);
+}
+
+function onLoginOk(res) {
+  if (!res || !res.ok) {
+    mostrarAlerta((res && res.msg) ? res.msg : 'Login recusado.', 'erro');
+    return;
+  }
+  localStorage.setItem('token', res.token);
+  localStorage.setItem('usuario', res.usuario);
+  carregarDados();
+}
+
+function onErr(err) {
+  var msg = 'Erro: ' + (err && err.message ? err.message : 'inesperado. Tente novamente.');
+  var loginVisivel = document.getElementById('login').style.display !== 'none';
+  if (loginVisivel) {
+    mostrarAlerta(msg, 'erro');
+  } else {
+    document.getElementById('dados').style.display = 'block';
+    document.getElementById('tabela').innerHTML =
+      '<p class="alerta erro-bg" style="padding:20px">' + msg + '</p>';
+  }
+}
+
+function carregarDados() {
+  var token = localStorage.getItem('token');
+  if (!token) { mostrarLogin(); return; }
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    mostrarLogin();
+    mostrarAlerta('Sessao expirada. Faca login novamente.', 'erro');
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(onDadosOk)
+    .withFailureHandler(onErr)
+    .getDados(token);
+}
+
+function onDadosOk(res) {
+  if (!res || !res.ok) {
+    localStorage.removeItem('token');
+    mostrarLogin();
+    mostrarAlerta((res && res.msg) ? res.msg : 'Erro ao carregar dados.', 'erro');
+    return;
+  }
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('dados').style.display = 'block';
+  document.getElementById('userTag').textContent =
+    'Logado como: ' + res.usuario + (res.usuario === 'admin' ? ' (ve todas)' : '');
+
+  if (!res.linhas || res.linhas.length === 0) {
+    document.getElementById('tabela').innerHTML =
+      '<div class="empty">Nenhuma aplicacao encontrada para voce.</div>';
+    return;
+  }
+
+  // Status vira "pill" colorido; valor/lucro alinhados a direita.
+  var html = '<table><thead><tr>';
+  res.headers.forEach(function(h) {
+    var alinha = (h.indexOf('Valor') >= 0 || h.indexOf('Lucro') >= 0) ? ' class="num"' : '';
+    html += '<th' + alinha + '>' + h + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+  res.linhas.forEach(function(l) {
+    html += '<tr>';
+    res.headers.forEach(function(h) {
+      var v = l[h];
+      var cell = v;
+      var alinha = (h.indexOf('Valor') >= 0 || h.indexOf('Lucro') >= 0) ? ' class="num"' : '';
+      if (h === 'Status') {
+        var cls = String(v).toLowerCase() === 'ativo' ? 'ativo' : 'pago';
+        cell = '<span class="pill ' + cls + '">' + v + '</span>';
+      }
+      html += '<td' + alinha + '>' + cell + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('tabela').innerHTML = html;
+}
+
+function sair() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  mostrarLogin();
+}
+
+function mostrarLogin() {
+  document.getElementById('login').style.display = 'block';
+  document.getElementById('dados').style.display = 'none';
+  document.getElementById('usuario').value = '';
+  document.getElementById('senha').value = '';
+  document.getElementById('tabela').innerHTML = '';
+  limparAlerta();
+}
+</script>
+</body>
+</html>

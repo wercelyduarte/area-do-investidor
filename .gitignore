@@ -1,0 +1,13 @@
+# Dados da SUA conta Google - nunca publicar
+client_secret*.json
+token.json
+estado.json
+estado.bak.json
+
+# Build
+build/
+dist/
+.venv*/
+__pycache__/
+*.pyc
+*.egg-info/
