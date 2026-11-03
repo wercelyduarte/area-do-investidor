@@ -65,12 +65,29 @@ O resultado sai em `dist\GerenciadorInvestidor-<versão>-win64.msi`.
 - **Sem `client_secret*.json` na pasta** (padrão): cada usuário cria a própria credencial no primeiro uso.
 - **Com `client_secret*.json` na pasta:** a credencial vai junto no instalador e o assistente pula essa etapa. Use só em distribuição **privada**. Nesse caso, publique o app na tela de consentimento, porque em modo *Testing* o login expira em 7 dias.
 
+## Pacote da Microsoft Store (.msix)
+```
+python setup.py build
+python gerar_msix.py
+```
+Gera `dist\GerenciadorInvestidor-<versão>.msix` a partir da pasta do build. Precisa do Windows SDK (`makeappx.exe`). A Store assina o pacote ao publicar, então não precisa de certificado pago.
+
+A identidade do pacote vem do **Partner Center → Gerenciamento de produto → Identidade do produto**. No GitHub, ela fica em **Settings → Secrets and variables → Actions → Variables**:
+
+| Variável | Valor no Partner Center |
+|---|---|
+| `MSIX_NOME` | Package/Identity/Name |
+| `MSIX_PUBLISHER` | Package/Identity/Publisher (`CN=...`) |
+| `MSIX_PUBLISHER_NOME` | Package/Properties/PublisherDisplayName |
+
+Sem essas variáveis, o pacote sai com uma identidade de teste, que a Store recusa. Política de privacidade para a Store: [PRIVACIDADE.md](PRIVACIDADE.md).
+
 ## Publicar uma versão nova (automático)
 ```
 git tag v2.1.0
 git push origin v2.1.0
 ```
-O GitHub Actions gera o `.msi` com a versão da tag e publica em **Releases**. O link "baixar a última versão" (`/releases/latest`) passa a apontar para ele sozinho. O `upgrade_code` fixo no `setup.py` faz o novo `.msi` substituir o anterior.
+O GitHub Actions gera o `.msi` e o `.msix` com a versão da tag e publica em **Releases**. O link "baixar a última versão" (`/releases/latest`) passa a apontar para ele sozinho. O `upgrade_code` fixo no `setup.py` faz o novo `.msi` substituir o anterior.
 
 Depois de atualizar `Code.gs` ou `Index.html`, cada usuário clica em **Configurações → Atualizar página do investidor**.
 

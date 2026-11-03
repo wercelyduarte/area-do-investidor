@@ -1,4 +1,4 @@
-# Gera o instalador .msi e publica na pagina de Releases sempre que uma tag vX.Y.Z e enviada.
+# Gera o instalador .msi e o pacote .msix (Microsoft Store) e publica na pagina de Releases sempre que uma tag vX.Y.Z e enviada.
 #   git tag v2.1.0 && git push origin v2.1.0
 # O build roda na nuvem do GitHub, sem nenhuma credencial: o .msi publico nao leva client_secret.
 name: Release
@@ -33,6 +33,7 @@ jobs:
           [[ "$VERSAO" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || VERSAO="0.0.0"
           export VERSAO
           python setup.py bdist_msi
+          echo "VERSAO=$VERSAO" >> "$GITHUB_ENV"
 
       - name: Conferir que nenhuma credencial foi empacotada
         shell: bash
@@ -41,14 +42,26 @@ jobs:
             echo "::error::client_secret encontrado no build"; exit 1
           fi
 
+      # Identidade do Partner Center em Settings > Secrets and variables > Actions > Variables
+      - name: Gerar pacote da Microsoft Store (.msix)
+        env:
+          MSIX_NOME: ${{ vars.MSIX_NOME }}
+          MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+          MSIX_PUBLISHER_NOME: ${{ vars.MSIX_PUBLISHER_NOME }}
+        run: python gerar_msix.py
+
       - uses: actions/upload-artifact@v4
         with:
           name: instalador
-          path: dist/*.msi
+          path: |
+            dist/*.msi
+            dist/*.msix
 
       - name: Publicar na pagina de Releases
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.msi
+          files: |
+            dist/*.msi
+            dist/*.msix
           generate_release_notes: true

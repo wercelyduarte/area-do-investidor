@@ -54,4 +54,4 @@ O programa cria a planilha e publica a página dos investidores sozinho.
 ## Para desenvolvedores
 Código-fonte, build do instalador e como a página funciona: **[docs/DESENVOLVEDORES.md](docs/DESENVOLVEDORES.md)**.
 
-Licença: [MIT](LICENSE).
+Licença: [MIT](LICENSE). Privacidade: [o programa não envia nenhum dado ao autor](docs/PRIVACIDADE.md).
